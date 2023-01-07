@@ -33,7 +33,9 @@ commute_map <- function(city, country){
   distance_list <- vector('list', nrow(homes))
   for (i in 1:nrow(homes)) {
     current_points <- homes
-    distance_list[[i]] <- tryCatch(mapdist(from = as.numeric(current_points[i,]), to = as.numeric(center), mode='transit'), 
+    distance_list[[i]] <- tryCatch(mapdist(
+      from = as.numeric(current_points[i,]), 
+      to = as.numeric(center), mode='transit'), 
                                    error=function(err) na_df)
     if(i %% 10 == 0){
       print(i)
@@ -46,17 +48,22 @@ commute_map <- function(city, country){
   write.csv(distance_df, paste0(city, '_', t, '_rawdata.csv'), row.names=F)
   names(distance_df) <- mapvalues(names(distance_df), from = 'lon', to= 'long')
   
-  min_long <- min(abs(distance_df$long))* sign(min(distance_df$long))
+  min_long <- min(abs(distance_df$lon))* sign(min(distance_df$lon))
   min_lat <- min(abs(distance_df$lat)) * sign(min(distance_df$lat))
   
-  ggmap(basemap) + geom_point(data=distance_df[minutes<=40],  aes(x=long, y=lat, fill=minutes), size=2, shape=23) +
-    geom_density_2d(data=distance_df[minutes<=40],  aes(x=long, y=lat), color='black', alpha=0.75) +
-    scale_fill_gradient2(low='green', mid='yellow', high='red', midpoint=20, 
-                         breaks=c(0, 10, 20, 30, 40), labels=c(0, 10, 20, 30, 40)) +
+  time_ext <- 40
+  
+  ggmap(basemap) + geom_point(data=distance_df[minutes<=time_ext],  
+                              aes(x=long, y=lat, fill=minutes), size=2, shape=23) +
+    geom_density_2d(data=distance_df[minutes<=time_ext],  
+                    aes(x=long, y=lat), color='black', alpha=0.75) +
+    scale_fill_gradient2(low='green', mid='yellow', high='red', midpoint=time_ext/2, 
+                         breaks=seq(0, time_ext, 10), labels=seq(0, time_ext, 10)) +
     ggtitle(paste0(city, ' Commute Map')) + 
     geom_point(data=center, aes(x=lon, y=lat), size=3, alpha=0.6) +
     theme(plot.title = element_text(hjust=0.5)) +
-    scalebar(distance_df[minutes<=40], dist=5, dist_unit = 'km', transform = T, model = 'WGS84', 
+    scalebar(distance_df[minutes<=time_ext], 
+             dist=5, dist_unit = 'km', transform = T, model = 'WGS84', 
              location = 'bottomright', st.size = 3,
              height=0.02, 
              anchor=c(x=min_long-0.001 * sign(min(distance_df$long)), 
